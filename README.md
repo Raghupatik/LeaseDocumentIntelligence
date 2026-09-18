@@ -195,31 +195,3 @@ Follows [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotn
 | **Phase 3+** | Reduce human review via Prompt Flow evals, confidence calibration, fine-tuning |
 
 > 📐 **See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for Architecture Pillars (Security, DR, HA, Scalability, Resiliency) and detailed roadmap.**
-
-## Troubleshooting
-
-### 401 Unauthorized from Foundry
-```bash
-# Verify Managed Identity has correct role
-az role assignment list --assignee <identity-id>
-
-# Assign role if missing
-az role assignment create --assignee-object-id <identity-id> \
-  --role "Cognitive Services OpenAI User" \
-  --scope <foundry-resource-id>
-```
-
-## API Documentation
-
-Access API documentation at `/scalar/v1` (development mode).
-
-```
-GET  /openapi/v1.json     - OpenAPI specification
-GET  /scalar/v1           - Scalar interactive UI
-```
-
----
-
-**Status**: MVP - Production ready for pilot programs  
-**Last Updated**: 2026-Q3  
-**Version**: 1.0.0
