@@ -62,6 +62,8 @@ dotnet run
 
 Application will start at `https://localhost:5001` (or next available port)
 
+**API Documentation**: Access interactive API docs at `/scalar/v1`
+
 ### 6. Run Unit Tests
 
 ```bash
