@@ -40,6 +40,14 @@ A sample Texas commercial lease agreement used to validate the AI extraction pip
 
 ![Upload Processing](images/UploadScreenProcessing.png)
 
+**Azure Storage** - PDF document stored in blob container:
+
+![Storage Account](images/storage-account.png)
+
+**Cosmos DB** - Document metadata persisted:
+
+![Cosmos Metadata](images/metadata-cosmos.png)
+
 ### Step 4: AI Extraction
 
 1. Text sent to **Azure AI Foundry** (GPT-4o)
