@@ -1,0 +1,177 @@
+html, body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.navbar {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.navbar-brand {
+    font-weight: 600;
+}
+
+.container-fluid {
+    flex: 1;
+}
+
+.loading-progress {
+    visibility: hidden;
+}
+
+.loading-progress-text {
+    display: none;
+}
+
+svg.loading-progress {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 48px;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.main {
+    flex: 1;
+}
+
+.top-row {
+    background-color: #f7f7f7;
+    border-bottom: 1px solid #d6d5d5;
+    justify-content: flex-end;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+}
+
+    .top-row ::deep a {
+        margin-left: 1rem;
+    }
+
+.content {
+    padding-top: 1.1rem;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
+}
+
+    .btn-primary:hover {
+        color: #fff;
+        background-color: #1c63ce;
+        border-color: #1a3a52;
+    }
+
+.content ::deep h1:first-child {
+    margin-top: 0;
+}
+
+code {
+    color: #d63384;
+}
+
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.sidebar-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+}
+
+.badge {
+    margin-left: 0.5rem;
+}
+
+/* Authentication styles */
+.auth-navbar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.auth-navbar .nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.auth-navbar .nav-link:hover {
+    color: white !important;
+}
+
+.auth-navbar .navbar-brand {
+    color: white !important;
+}
+
+/* Card styling */
+.card {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 0.5rem;
+}
+
+/* Table styling */
+table {
+    margin-bottom: 0;
+}
+
+tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Loading spinner */
+.spinner-border {
+    width: 2rem;
+    height: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        padding: 0;
+        position: static;
+    }
+
+    .top-row {
+        position: static;
+    }
+
+    main {
+        padding-left: 0;
+    }
+}

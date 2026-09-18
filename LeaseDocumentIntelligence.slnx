@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/.github/">
+    <File Path=".github/workflows/ci-cd.yml" />
+    <File Path=".github/agents/context.md" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/ARCHITECTURE.md" />
+    <File Path="docs/LocalResults.docx" />
+    <File Path="docs/LocalResults.md" />
+    <File Path="docs/SETUP_GUIDE.md" />
+    <File Path="docs/Texas-Commercial-Lease-Agreement.pdf" />
+  </Folder>
+  <Folder Name="/docs/images/" />
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="LeaseDocumentIntelligence.API/LeaseDocumentIntelligence.API.csproj" />
+  <Project Path="LeaseDocumentIntelligence.Domain/LeaseDocumentIntelligence.Domain.csproj" />
+  <Project Path="LeaseDocumentIntelligence.Infrastructure/LeaseDocumentIntelligence.Infrastructure.csproj" />
+  <Project Path="LeaseDocumentIntelligence.Tests/LeaseDocumentIntelligence.Tests.csproj" />
+  <Project Path="LeaseDocumentIntelligence/LeaseDocumentIntelligence.csproj" />
+</Solution>

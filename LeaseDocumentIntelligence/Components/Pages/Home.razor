@@ -1,0 +1,126 @@
+@page "/"
+@using System.Net.Http.Json
+
+<PageTitle>Home - Lease Document Intelligence</PageTitle>
+
+<div class="container mt-5">
+    <div class="row mb-5">
+        <div class="col-md-12">
+            <h1 class="display-4 mb-4">Lease Document Intelligence</h1>
+            <p class="lead">Automated extraction of critical lease fields using AI with human-in-the-loop review</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3 class="card-title">📤 Upload</h3>
+                    <p class="card-text">Upload your commercial lease documents in PDF format for intelligent extraction.</p>
+                    <a href="/upload" class="btn btn-primary">Start Extraction</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3 class="card-title">✓ Review</h3>
+                    <p class="card-text">Review extracted fields flagged with low confidence and make corrections.</p>
+                    <a href="/review" class="btn btn-warning">Open Review Queue</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3 class="card-title">📊 Analyze</h3>
+                    <p class="card-text">Get instant insights with page citations and confidence scores for every field.</p>
+                    <button class="btn btn-secondary" disabled>View Results</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-5">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Key Features</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>📋 Extracted Fields (40-60 per lease):</h6>
+                    <ul>
+                        <li>Base rent schedules & annual escalations</li>
+                        <li>Lease commencement & expiration dates</li>
+                        <li>Renewal & termination options</li>
+                        <li>CAM expenses, caps & exclusions</li>
+                        <li>Security deposits & guarantees</li>
+                        <li>Co-tenancy clauses & conditions</li>
+                        <li>Percentage rent calculations</li>
+                        <li>Notice requirements & deadlines</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>🤖 AI-Powered Advantages:</h6>
+                    <ul>
+                        <li>Confidence scores (0-100%) for each field</li>
+                        <li>Automatic page & clause citations</li>
+                        <li>Raw text excerpts for verification</li>
+                        <li>Low-confidence field flagging (&lt; 70%)</li>
+                        <li>Human-in-the-loop review workflow</li>
+                        <li>Handles amendments & modifications</li>
+                        <li>Maintains audit trail of corrections</li>
+                        <li>RESTful API for system integration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">How It Works</h5>
+        </div>
+        <div class="card-body">
+            <ol class="list-group list-group-numbered">
+                <li class="list-group-item">
+                    <strong>Upload & Extract:</strong> Upload a commercial lease PDF. The system automatically extracts text and identifies key fields.
+                </li>
+                <li class="list-group-item">
+                    <strong>AI Analysis:</strong> Azure Foundry Models analyze the document and extract ~50 predefined lease fields with confidence scores.
+                </li>
+                <li class="list-group-item">
+                    <strong>Quality Check:</strong> Fields below 70% confidence are automatically flagged for human review.
+                </li>
+                <li class="list-group-item">
+                    <strong>Review & Correct:</strong> Lease experts review flagged items, correct values, and add notes.
+                </li>
+                <li class="list-group-item">
+                    <strong>Clean Data:</strong> Approved data is ready for downstream systems (billing, forecasting, critical date management).
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-4" role="alert">
+        <h5>💡 Pro Tips:</h5>
+        <ul class="mb-0">
+            <li>High-quality PDF scans produce better results</li>
+            <li>Check page citations to verify extractions</li>
+            <li>Review all lease amendments separately</li>
+            <li>Use the raw excerpt view for detailed verification</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .card {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+</style>

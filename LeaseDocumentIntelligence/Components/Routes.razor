@@ -1,0 +1,22 @@
+@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layouts.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="typeof(Layouts.MainLayout)">
+                <div class="container mt-5">
+                    <div class="alert alert-warning">
+                        <h4>Page Not Found</h4>
+                        <p>Sorry, there's nothing at this address.</p>
+                        <a href="/" class="btn btn-primary">Go Home</a>
+                    </div>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

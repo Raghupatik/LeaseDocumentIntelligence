@@ -1,0 +1,261 @@
+@page "/review"
+@rendermode InteractiveServer
+@using LeaseDocumentIntelligence.Domain.DTOs
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient HttpClient
+
+<PageTitle>Review Queue</PageTitle>
+
+<div class="container mt-5">
+    <h1 class="mb-4">Document Review Queue</h1>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading review items...</p>
+        </div>
+    }
+    else if (reviewItems == null || !reviewItems.Any())
+    {
+        <div class="alert alert-info" role="alert">
+            <h4 class="alert-heading">No Items</h4>
+            <p>There are no items currently pending review. All extracted fields meet confidence thresholds.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title">Pending Review</h6>
+                        <h2 class="text-warning">@reviewItems.Count</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Items Requiring Correction</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Field</th>
+                                <th>Extracted Value</th>
+                                <th>Confidence</th>
+                                <th>Page Reference</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in reviewItems)
+                            {
+                                <tr>
+                                    <td><strong>@item.FieldName</strong></td>
+                                    <td><code>@item.ExtractedValue</code></td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-warning" role="progressbar" 
+                                                 style="width: @(item.ConfidenceScore * 100)%"
+                                                 aria-valuenow="@(item.ConfidenceScore * 100)" 
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                @item.ConfidenceScore.ToString("P0")
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.PageReference))
+                                        {
+                                            <span class="badge bg-info">@item.PageReference</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-success" 
+                                                @onclick="() => ApproveItem(item.Id)"
+                                                title="Approve extraction">
+                                            ✓ Approve
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                @onclick="() => ShowCorrectionModal(item)"
+                                                title="Correct value">
+                                            ✎ Correct
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showCorrectionModal && selectedItem != null)
+    {
+        <div class="modal d-block" style="background-color: rgba(0,0,0,.5);" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Correct Field: @selectedItem.FieldName</h5>
+                        <button type="button" class="btn-close" @onclick="() => showCorrectionModal = false"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Original Extraction</label>
+                            <input type="text" class="form-control" value="@selectedItem.ExtractedValue" disabled />
+                            <small class="form-text text-muted">Confidence: @selectedItem.ConfidenceScore.ToString("P0")</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Corrected Value</label>
+                            <input type="text" class="form-control" @bind="correctionValue" placeholder="Enter corrected value" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" rows="3" @bind="correctionNotes" placeholder="Add any notes about the correction..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="() => showCorrectionModal = false">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="SubmitCorrection" disabled="@string.IsNullOrWhiteSpace(correctionValue)">
+                            Submit Correction
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success mt-3" role="alert">
+            @successMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3" role="alert">
+            @errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    private List<ReviewQueueItemDto>? reviewItems;
+    private bool isLoading = true;
+    private bool showCorrectionModal = false;
+    private ReviewQueueItemDto? selectedItem;
+    private string correctionValue = string.Empty;
+    private string correctionNotes = string.Empty;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReviewQueue();
+    }
+
+    private async Task LoadReviewQueue()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var response = await HttpClient.GetAsync("/api/review/pending");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                reviewItems = JsonSerializer.Deserialize<List<ReviewQueueItemDto>>(json, options);
+            }
+            else
+            {
+                errorMessage = $"Failed to load review items: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading review queue: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ApproveItem(Guid reviewItemId)
+    {
+        try
+        {
+            var response = await HttpClient.PostAsync($"/api/review/{reviewItemId}/approve", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Item approved!";
+                await LoadReviewQueue();
+                await Task.Delay(2000);
+                successMessage = string.Empty;
+            }
+            else
+            {
+                errorMessage = $"Failed to approve item: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error approving item: {ex.Message}";
+        }
+    }
+
+    private void ShowCorrectionModal(ReviewQueueItemDto item)
+    {
+        selectedItem = item;
+        correctionValue = item.ExtractedValue;
+        correctionNotes = string.Empty;
+        showCorrectionModal = true;
+    }
+
+    private async Task SubmitCorrection()
+    {
+        if (selectedItem == null || string.IsNullOrWhiteSpace(correctionValue))
+        {
+            errorMessage = "Corrected value is required";
+            return;
+        }
+
+        try
+        {
+            var request = new { correctedValue = correctionValue, notes = correctionNotes };
+            var response = await HttpClient.PostAsJsonAsync($"/api/review/{selectedItem.Id}/reject", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Correction submitted!";
+                showCorrectionModal = false;
+                await LoadReviewQueue();
+                await Task.Delay(2000);
+                successMessage = string.Empty;
+            }
+            else
+            {
+                errorMessage = $"Failed to submit correction: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error submitting correction: {ex.Message}";
+        }
+    }
+}

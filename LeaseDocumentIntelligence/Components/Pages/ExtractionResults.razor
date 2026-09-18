@@ -1,0 +1,243 @@
+@page "/results/{DocumentId:guid}"
+@rendermode InteractiveServer
+@using LeaseDocumentIntelligence.Domain.DTOs
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient HttpClient
+@inject NavigationManager Navigation
+
+<PageTitle>Extraction Results</PageTitle>
+
+<div class="container mt-5">
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Processing document and extracting fields...</p>
+        </div>
+    }
+    else if (result != null)
+    {
+        <div class="mb-3">
+            <a href="/upload" class="btn btn-secondary">← Back to Upload</a>
+        </div>
+
+        <h1 class="mb-4">Extraction Results</h1>
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Document Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>File:</strong> @result.DocumentFileName</p>
+                        <p><strong>Extracted:</strong> @result.ExtractedAt.ToString("g")</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Total Fields:</strong> @result.Summary.TotalFieldsExtracted</p>
+                        <p><strong>Average Confidence:</strong> @result.Summary.AverageConfidenceScore.ToString("P0")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title text-success">High Confidence</h6>
+                        <h2>@result.Summary.HighConfidenceFields</h2>
+                        <small class="text-muted">≥ 70% confidence</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title text-warning">Low Confidence</h6>
+                        <h2>@result.Summary.LowConfidenceFields</h2>
+                        <small class="text-muted">&lt; 70% confidence</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title text-danger">Requires Review</h6>
+                        <h2>@result.Summary.ItemsRequiringReview</h2>
+                        <small class="text-muted">Pending human review</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (result.ReviewQueueItems.Any())
+        {
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">⚠️ Items Requiring Review</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Extracted Value</th>
+                                    <th>Confidence</th>
+                                    <th>Page / Clause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in result.ReviewQueueItems)
+                                {
+                                    <tr class="table-warning">
+                                        <td><strong>@item.FieldName</strong></td>
+                                        <td><code>@item.ExtractedValue</code></td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar bg-warning" role="progressbar" 
+                                                     style="width: @(item.ConfidenceScore * 100)%"
+                                                     aria-valuenow="@(item.ConfidenceScore * 100)" 
+                                                     aria-valuemin="0" aria-valuemax="100">
+                                                    @item.ConfidenceScore.ToString("P0")
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <small>
+                                                @if (!string.IsNullOrEmpty(item.PageReference))
+                                                {
+                                                    <span class="badge bg-info">@item.PageReference</span>
+                                                }
+                                                @if (!string.IsNullOrEmpty(item.ClauseReference))
+                                                {
+                                                    <br/>
+                                                    <span class="badge bg-secondary">@item.ClauseReference</span>
+                                                }
+                                            </small>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="/review" class="btn btn-warning mt-3">Review & Correct Items</a>
+                </div>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Extracted Fields (@result.Fields.Count)</h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="fieldsAccordion">
+                    @foreach (var (field, index) in result.Fields.Select((f, i) => (f, i)))
+                    {
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button @(field.ConfidenceScore >= 0.7 ? "bg-light" : "bg-warning")" 
+                                        type="button" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#field@index" 
+                                        aria-expanded="@(index == 0 ? "true" : "false")" 
+                                        aria-controls="field@index">
+                                    <strong>@field.FieldName</strong>
+                                    <span class="badge @(field.ConfidenceScore >= 0.7 ? "bg-success ms-2" : "bg-warning ms-2")">
+                                        @field.ConfidenceScore.ToString("P0")
+                                    </span>
+                                </button>
+                            </h2>
+                            <div id="field@index" class="accordion-collapse collapse @(index == 0 ? "show" : "")" data-bs-parent="#fieldsAccordion">
+                                <div class="accordion-body">
+                                    <p><strong>Value:</strong> <code>@field.ExtractedValue</code></p>
+                                    <p><strong>Type:</strong> @field.FieldType</p>
+                                    <p><strong>Confidence:</strong> @field.ConfidenceScore.ToString("P0")</p>
+
+                                    @if (!string.IsNullOrEmpty(field.PageReference))
+                                    {
+                                        <p><strong>Page:</strong> <span class="badge bg-info">@field.PageReference</span></p>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(field.ClauseReference))
+                                    {
+                                        <p><strong>Clause:</strong> <span class="badge bg-secondary">@field.ClauseReference</span></p>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(field.RawExcerpt))
+                                    {
+                                        <div class="alert alert-light border">
+                                            <strong>Raw Excerpt:</strong>
+                                            <p class="mt-2 mb-0"><em>@field.RawExcerpt</em></p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Error</h4>
+            <p>@errorMessage</p>
+            <a href="/upload" class="btn btn-primary">Back to Upload</a>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid DocumentId { get; set; }
+
+    private ExtractionResultDto? result;
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadResults();
+    }
+
+    private async Task LoadResults()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var response = await HttpClient.GetAsync($"/api/lease/{DocumentId}/results");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                result = JsonSerializer.Deserialize<ExtractionResultDto>(json, options);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                await Task.Delay(2000);
+                await LoadResults();
+            }
+            else
+            {
+                errorMessage = $"Failed to load results: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading results: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

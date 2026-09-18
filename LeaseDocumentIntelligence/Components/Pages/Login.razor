@@ -1,0 +1,62 @@
+@page "/login"
+@using Microsoft.AspNetCore.Components.Authorization
+
+<PageTitle>Login - Lease Document Intelligence</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body p-5">
+                    <h2 class="card-title text-center mb-4">Lease Document Intelligence</h2>
+                    <p class="text-center text-muted mb-4">
+                        Sign in with your Microsoft account to continue
+                    </p>
+
+                    <AuthorizeView>
+                        <Authorized>
+                            <div class="alert alert-success">
+                                <p>You are already logged in as <strong>@context.User.Identity?.Name</strong></p>
+                                <p>Your roles:</p>
+                                <ul>
+                                    @foreach (var claim in context.User.FindAll("roles"))
+                                    {
+                                        <li>@claim.Value</li>
+                                    }
+                                </ul>
+                                <a href="/" class="btn btn-primary">Go to Dashboard</a>
+                            </div>
+                        </Authorized>
+                        <NotAuthorized>
+                            <form method="get" action="/login-challenge">
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    Sign in with Microsoft
+                                </button>
+                            </form>
+                            <hr class="my-4" />
+                            <p class="text-muted small text-center">
+                                You will be redirected to Microsoft to sign in with your organizational account.
+                            </p>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .btn-primary {
+        background-color: #0078d4;
+        border-color: #0078d4;
+    }
+
+    .btn-primary:hover {
+        background-color: #106ebe;
+        border-color: #106ebe;
+    }
+</style>
