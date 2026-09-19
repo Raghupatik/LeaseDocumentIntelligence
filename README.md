@@ -153,10 +153,6 @@ This is the engineering around the AI, not the AI itself.
 
 
 
-## Architecture Overview
-
-> 📐 **See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed N-Tier layers, Mermaid diagrams, and component documentation.**
-
 ## Configuration & Deployment
 
 > 📋 **See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) for:**
