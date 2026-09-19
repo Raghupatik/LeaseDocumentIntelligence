@@ -1,10 +1,5 @@
 # Lease Document Intelligence - Architecture
 
-## Overview
-A .NET-based intelligent lease document extraction system using Azure AI Foundry models with human-in-the-loop review workflow. This document covers the complete Azure infrastructure topology and application architecture.
-
----
-
 ## Azure Infrastructure Architecture
 
 ```mermaid
