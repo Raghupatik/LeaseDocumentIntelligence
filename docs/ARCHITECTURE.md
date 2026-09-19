@@ -433,76 +433,14 @@ This architecture is designed around the **Azure Well-Architected Framework** pi
 
 ---
 
-## Security Architecture
+## Code Style
 
-```mermaid
-flowchart TB
-    subgraph SecurityLayers["🔒 Security Layers"]
-        direction TB
-        
-        subgraph Edge["Edge Security"]
-            style Edge fill:#FFEBEE,stroke:#F44336
-            WAF["🛡️ WAF on Front Door<br/><i>OWASP Rules</i>"]
-            DDoS["🚫 DDoS Protection<br/><i>Standard Tier</i>"]
-        end
-
-        subgraph Network["Network Security"]
-            style Network fill:#E3F2FD,stroke:#2196F3
-            VNET["🌐 Virtual Network"]
-            NSG["🔐 Network Security Groups"]
-            PEP["🔗 Private Endpoints"]
-        end
-
-        subgraph Identity["Identity Security"]
-            style Identity fill:#F3E5F5,stroke:#9C27B0
-            EntraID["👤 Entra ID<br/><i>OAuth 2.0 / OIDC</i>"]
-            RBAC["📋 Role-Based Access<br/><i>Admin, Reviewer, User</i>"]
-            MI["🆔 Managed Identity<br/><i>Zero Secrets</i>"]
-        end
-
-        subgraph Data["Data Security"]
-            style Data fill:#E8F5E9,stroke:#4CAF50
-            TLS["🔒 TLS 1.3<br/><i>In Transit</i>"]
-            Encryption["🔑 CMK Encryption<br/><i>At Rest</i>"]
-            KV["🗝️ Key Vault<br/><i>Secrets Management</i>"]
-        end
-    end
-
-    WAF --> DDoS
-    DDoS --> VNET
-    VNET --> NSG
-    NSG --> PEP
-    PEP --> EntraID
-    EntraID --> RBAC
-    RBAC --> MI
-    MI --> TLS
-    TLS --> Encryption
-    Encryption --> KV
-```
-
-### Authentication & Authorization
-- **Entra ID** for user authentication (OAuth 2.0 / OpenID Connect)
-- **Role-Based Access Control** with policies:
-  - `AdminOnly` - Full access to all operations
-  - `ReviewerOrAdmin` - Access to review queue
-  - `AllUsers` - Basic document operations
-- **Managed Identity** for all service-to-service authentication
-
-### Zero-Trust Secrets Management
-- No secrets in `appsettings.json` (placeholders only)
-- **Azure Key Vault** as configuration provider in production
-- All Azure resources accessed via Managed Identity
-- Key Vault secret naming: `AzureAd--ClientSecret` → `AzureAd:ClientSecret`
-
-### Network Security
-- Private endpoints for Storage, Cosmos DB, Key Vault
-- NSG rules restrict inbound traffic
-- VNET integration for Web App and Functions
-
-### Data Protection
-- TLS 1.3 enforced for all connections
-- Customer-Managed Keys (CMK) for encryption at rest
-- Blob soft-delete and versioning enabled
+Follows [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions):
+- PascalCase for public members
+- camelCase for private fields
+- Async methods end with `Async`
+- Use `var` for obvious types, explicit for clarity
+- Modern C# features (records, nullable checks, etc.)
 
 ## Testing
 

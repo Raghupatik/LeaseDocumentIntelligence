@@ -171,15 +171,6 @@ This is the engineering around the AI, not the AI itself.
 > - Service Bus, Function App, Application Insights
 > - Managed Identity role assignments
 
-## Code Style
-
-Follows [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions):
-- PascalCase for public members
-- camelCase for private fields
-- Async methods end with `Async`
-- Use `var` for obvious types, explicit for clarity
-- Modern C# features (records, nullable checks, etc.)
-
 ## Roadmap
 
 ### Implemented (MVP)

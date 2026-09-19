@@ -15,7 +15,7 @@ git clone https://github.com/your-org/LeaseDocumentIntelligence.git
 cd LeaseDocumentIntelligence
 ```
 
-### 2. Configure Foundry Model Endpoint
+### 2. Configure Azure Resources
 
 Create `appsettings.Development.json`:
 ```json
@@ -27,16 +27,30 @@ Create `appsettings.Development.json`:
 	}
   },
   "Foundry": {
-	"Endpoint": "https://your-foundry-resource.openai.azure.com/",
-	"ModelName": "gpt-4",
-	"UseLocalTesting": true
+	"Endpoint": "https://your-foundry-resource.services.ai.azure.com/",
+	"ModelName": "gpt-4o",
+	"UseLocalTesting": false
+  },
+  "BlobStorage": {
+	"StorageAccountUri": "https://your-storage-account.blob.core.windows.net/",
+	"ContainerName": "lease-documents"
+  },
+  "CosmosDb": {
+	"Endpoint": "https://your-cosmos-account.documents.azure.com:443/",
+	"DatabaseName": "LeaseDocuments",
+	"ContainerName": "Metadata"
+  },
+  "KeyVault": {
+	"Uri": "https://your-keyvault.vault.azure.net/"
   }
 }
 ```
 
 Replace:
-- `your-foundry-resource` - Your Azure Foundry resource name
-- `gpt-4` - Your deployed model name
+- `your-foundry-resource` - Your Azure AI Foundry resource name
+- `your-storage-account` - Your Azure Storage account name
+- `your-cosmos-account` - Your Cosmos DB account name
+- `your-keyvault` - Your Key Vault name
 
 ### 3. Authenticate with Azure CLI
 
