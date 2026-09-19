@@ -184,52 +184,6 @@ sequenceDiagram
 
 ---
 
-## Managed Identity Flow
-
-```mermaid
-flowchart LR
-    subgraph Resources["Azure Resources"]
-        WA["🖥️ Web App"]
-        FA["⚙️ Function App"]
-        APIM["🔌 APIM"]
-    end
-
-    subgraph ManagedIdentity["🔐 Managed Identities"]
-        WA_MI["Web App MI"]
-        FA_MI["Function MI"]
-        APIM_MI["APIM MI"]
-    end
-
-    subgraph TargetServices["Target Services"]
-        KV["🔑 Key Vault"]
-        SA["📦 Storage"]
-        CDB["🗄️ Cosmos DB"]
-        SB["📬 Service Bus"]
-        AI["🤖 AI Foundry"]
-    end
-
-    WA --> WA_MI
-    FA --> FA_MI
-    APIM --> APIM_MI
-
-    WA_MI -->|"Get Secrets"| KV
-    WA_MI -->|"Upload Blobs"| SA
-    WA_MI -->|"Read/Write"| CDB
-    WA_MI -->|"Send Messages"| SB
-
-    FA_MI -->|"Get Secrets"| KV
-    FA_MI -->|"Read Blobs"| SA
-    FA_MI -->|"Update Status"| CDB
-    FA_MI -->|"Receive Messages"| SB
-
-    APIM_MI -->|"Call Models"| AI
-
-    style ManagedIdentity fill:#F3E5F5,stroke:#9C27B0
-    style TargetServices fill:#E3F2FD,stroke:#2196F3
-```
-
----
-
 ## N-Tier Application Layers
 
 ```mermaid
@@ -607,12 +561,6 @@ flowchart LR
 - **Publish**: Create deployment artifact
 - **Deploy**: Azure login via OIDC (Managed Identity), publish to App Service
 
-### Local Development
-1. Clone repo
-2. Create `appsettings.Development.json` with Foundry endpoint
-3. `dotnet run`
-4. Navigate to https://localhost:7231
-
 ### Azure Resources Required
 | Resource | Purpose | SKU |
 |----------|---------|-----|
@@ -626,35 +574,6 @@ flowchart LR
 | Application Insights | Telemetry & logging | Basic |
 | Front Door | Global load balancing | Standard |
 | Application Gateway | Regional LB, WAF | WAF_v2 |
-
-## Configuration
-
-### appsettings.json (Development)
-```json
-{
-  "Foundry": {
-    "Endpoint": "https://<resource>.openai.azure.com/",
-    "ModelName": "gpt-4o",
-    "ApiVersion": "2024-02-15-preview"
-  },
-  "AzureAd": {
-    "Instance": "https://login.microsoftonline.com/",
-    "TenantId": "<tenant-id>",
-    "ClientId": "<client-id>"
-  },
-  "KeyVault": {
-    "Uri": "https://<keyvault-name>.vault.azure.net/"
-  }
-}
-```
-
-### Key Vault Secrets
-| Secret Name | Maps To |
-|-------------|---------|
-| `AzureAd--ClientSecret` | `AzureAd:ClientSecret` |
-| `CosmosDb--ConnectionString` | `CosmosDb:ConnectionString` |
-| `Storage--ConnectionString` | `Storage:ConnectionString` |
-| `ApplicationInsights--ConnectionString` | App Insights key |
 
 ## API Documentation
 
