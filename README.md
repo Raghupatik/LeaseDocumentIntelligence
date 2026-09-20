@@ -182,3 +182,12 @@ This is the engineering around the AI, not the AI itself.
 | **Phase 3+** | Reduce human review via Prompt Flow evals, confidence calibration, fine-tuning |
 
 > 📐 **See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for Architecture Pillars (Security, DR, HA, Scalability, Resiliency) and detailed roadmap.**
+
+## References
+
+- [AI Data-Driven Frameworks for Real Estate Lease Management](docs/IJSET_V1_Issue.pdf) - Academic research on AI in lease management
+- [MRI Contract Intelligence](https://www.mrisoftware.com/products/contract-intelligence/) - MRI Software
+- [AI-Powered Lease Abstraction](https://www.growthfactor.ai/resources/blog/ai-powered-lease-abstraction) - Growth Factor AI
+- [The Complete Guide to Lease Abstraction for CRE Companies](https://ntrustinfotech.com/the-complete-guide-to-lease-abstraction-for-cre-companies/) - NTrust Infotech
+- [Manual vs Automated Lease Abstraction](https://leaseabstractors.com/manual-vs-automated-lease-abstraction) - Lease Abstractors
+
