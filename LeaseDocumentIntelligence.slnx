@@ -4,8 +4,8 @@
     <File Path=".github/agents/context.md" />
   </Folder>
   <Folder Name="/docs/">
+    <File Path="../../../Downloads/IJSET_V10_issue6_328.pdf" />
     <File Path="docs/ARCHITECTURE.md" />
-    <File Path="docs/LocalResults.docx" />
     <File Path="docs/LocalResults.md" />
     <File Path="docs/SETUP_GUIDE.md" />
     <File Path="docs/Texas-Commercial-Lease-Agreement.pdf" />
