@@ -185,7 +185,7 @@ This is the engineering around the AI, not the AI itself.
 
 ## References
 
-- [AI Data-Driven Frameworks for Real Estate Lease Management](docs/IJSET_V1_Issue.pdf) - Academic research on AI in lease management
+- [AI Data-Driven Frameworks for Real Estate Lease Management](docs/IJSET_V1_issue.pdf) - Academic research on AI in lease management
 - [MRI Contract Intelligence](https://www.mrisoftware.com/products/contract-intelligence/) - MRI Software
 - [AI-Powered Lease Abstraction](https://www.growthfactor.ai/resources/blog/ai-powered-lease-abstraction) - Growth Factor AI
 - [The Complete Guide to Lease Abstraction for CRE Companies](https://ntrustinfotech.com/the-complete-guide-to-lease-abstraction-for-cre-companies/) - NTrust Infotech
