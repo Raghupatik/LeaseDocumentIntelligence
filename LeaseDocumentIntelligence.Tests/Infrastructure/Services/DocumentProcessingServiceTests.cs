@@ -2,7 +2,6 @@ namespace LeaseDocumentIntelligence.Tests.Infrastructure.Services;
 
 using FluentAssertions;
 using LeaseDocumentIntelligence.Infrastructure.Services;
-using LeaseDocumentIntelligence.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

@@ -1,10 +1,10 @@
 using Azure.Identity;
 using LeaseDocumentIntelligence.Infrastructure.DependencyInjection;
-using Microsoft.Identity.Web;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
+using Microsoft.Identity.Web;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -98,7 +98,7 @@ builder.Services.AddScoped(sp =>
     var factory = sp.GetRequiredService<IHttpClientFactory>();
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
     var client = factory.CreateClient("LocalApi");
-    
+
     // Forward cookies from the current HTTP context to outgoing API requests
     var httpContext = httpContextAccessor.HttpContext;
     if (httpContext?.Request.Cookies.Count > 0)
@@ -106,7 +106,7 @@ builder.Services.AddScoped(sp =>
         var cookieHeader = string.Join("; ", httpContext.Request.Cookies.Select(c => $"{c.Key}={c.Value}"));
         client.DefaultRequestHeaders.Add("Cookie", cookieHeader);
     }
-    
+
     return client;
 });
 

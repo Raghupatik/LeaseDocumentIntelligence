@@ -100,8 +100,8 @@ public class FieldDefinitionsController : ControllerBase
             FieldName = request.FieldName,
             DisplayName = request.DisplayName,
             Description = request.Description,
-            FieldType = Enum.TryParse<FieldDataType>(request.FieldType, out var fieldType) 
-                ? fieldType 
+            FieldType = Enum.TryParse<FieldDataType>(request.FieldType, out var fieldType)
+                ? fieldType
                 : FieldDataType.Text,
             Category = request.Category,
             IsRequired = request.IsRequired,

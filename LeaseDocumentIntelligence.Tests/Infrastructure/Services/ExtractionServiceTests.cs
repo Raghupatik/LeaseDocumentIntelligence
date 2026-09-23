@@ -1,9 +1,9 @@
 namespace LeaseDocumentIntelligence.Tests.Infrastructure.Services;
 
 using FluentAssertions;
+using LeaseDocumentIntelligence.Domain.Interfaces;
 using LeaseDocumentIntelligence.Domain.Models;
 using LeaseDocumentIntelligence.Infrastructure.Services;
-using LeaseDocumentIntelligence.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -14,6 +14,8 @@ public class ExtractionServiceTests
     private readonly Mock<IFoundryAIService> _mockFoundryAI;
     private readonly Mock<IReviewQueueService> _mockReviewQueue;
     private readonly Mock<ILeaseDocumentRepository> _mockRepository;
+    private readonly Mock<IFieldDefinitionRepository> _mockFieldDefinitionRepo;
+    private readonly Mock<IVectorSearchService> _mockSearchService;
     private readonly Mock<ILogger<ExtractionService>> _mockLogger;
     private readonly ExtractionService _service;
 
@@ -23,13 +25,21 @@ public class ExtractionServiceTests
         _mockFoundryAI = new Mock<IFoundryAIService>();
         _mockReviewQueue = new Mock<IReviewQueueService>();
         _mockRepository = new Mock<ILeaseDocumentRepository>();
+        _mockFieldDefinitionRepo = new Mock<IFieldDefinitionRepository>();
+        _mockSearchService = new Mock<IVectorSearchService>();
         _mockLogger = new Mock<ILogger<ExtractionService>>();
+
+        // Setup default to return empty field definitions (use hardcoded)
+        _mockFieldDefinitionRepo.Setup(x => x.GetActiveFieldsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
 
         _service = new ExtractionService(
             _mockDocProcessing.Object,
             _mockFoundryAI.Object,
             _mockReviewQueue.Object,
             _mockRepository.Object,
+            _mockFieldDefinitionRepo.Object,
+            _mockSearchService.Object,
             _mockLogger.Object);
     }
 

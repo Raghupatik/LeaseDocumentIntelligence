@@ -151,7 +151,8 @@ public sealed class BlobStorageService : IBlobStorageService, IAsyncDisposable
                 PublicAccessType.None,
                 cancellationToken: cancellationToken);
 
-            _containerInitialized = true;        }
+            _containerInitialized = true;
+        }
         finally
         {
             _initSemaphore.Release();

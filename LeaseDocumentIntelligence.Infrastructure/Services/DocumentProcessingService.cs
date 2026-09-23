@@ -2,11 +2,10 @@ using LeaseDocumentIntelligence.Domain.Interfaces;
 
 namespace LeaseDocumentIntelligence.Infrastructure.Services;
 
-using System.IO;
 using Microsoft.Extensions.Logging;
+using System.IO;
 using System.Text;
 using UglyToad.PdfPig;
-using UglyToad.PdfPig.Content;
 
 public class DocumentProcessingService : IDocumentProcessingService
 {
@@ -36,7 +35,8 @@ public class DocumentProcessingService : IDocumentProcessingService
                     // PdfPig exposes page text via the Text property
                     text.AppendLine(page.Text ?? string.Empty);
                     pageIndex++;
-                }                return text.ToString();
+                }
+                return text.ToString();
             }
             catch (Exception ex)
             {

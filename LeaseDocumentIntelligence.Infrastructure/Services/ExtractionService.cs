@@ -14,6 +14,7 @@ public class ExtractionService : IExtractionService
     private readonly IReviewQueueService _reviewQueue;
     private readonly ILeaseDocumentRepository _repository;
     private readonly IFieldDefinitionRepository _fieldDefinitionRepository;
+    private readonly IVectorSearchService _searchService;
     private readonly ILogger<ExtractionService> _logger;
 
     public ExtractionService(
@@ -22,6 +23,7 @@ public class ExtractionService : IExtractionService
         IReviewQueueService reviewQueue,
         ILeaseDocumentRepository repository,
         IFieldDefinitionRepository fieldDefinitionRepository,
+        IVectorSearchService searchService,
         ILogger<ExtractionService> logger)
     {
         _documentProcessing = documentProcessing;
@@ -29,6 +31,7 @@ public class ExtractionService : IExtractionService
         _reviewQueue = reviewQueue;
         _repository = repository;
         _fieldDefinitionRepository = fieldDefinitionRepository;
+        _searchService = searchService;
         _logger = logger;
     }
 
@@ -39,10 +42,10 @@ public class ExtractionService : IExtractionService
         try
         {
             document.Status = DocumentStatus.Processing;
-            await _repository.UpdateAsync(document, cancellationToken);            
+            await _repository.UpdateAsync(document, cancellationToken);
             var documentText = await _documentProcessing.ExtractTextFromPdfAsync(
                 document.FileContent,
-                cancellationToken);            
+                cancellationToken);
 
             // Load active field definitions from metadata store
             var fieldDefinitions = await _fieldDefinitionRepository.GetActiveFieldsAsync(cancellationToken);
@@ -93,6 +96,19 @@ public class ExtractionService : IExtractionService
             }
 
             await _repository.UpdateAsync(document, cancellationToken);
+
+            // Index document in Azure AI Search for semantic search
+            try
+            {
+                await _searchService.IndexDocumentAsync(document, documentText, cancellationToken);
+                _logger.LogInformation("Indexed document {DocumentId} in vector search", document.Id);
+            }
+            catch (Exception searchEx)
+            {
+                // Log but don't fail the extraction if indexing fails
+                _logger.LogWarning(searchEx, "Failed to index document {DocumentId} in search, will retry later", document.Id);
+            }
+
             return await GetExtractionResultAsync(document.Id, cancellationToken);
         }
         catch (Exception ex)

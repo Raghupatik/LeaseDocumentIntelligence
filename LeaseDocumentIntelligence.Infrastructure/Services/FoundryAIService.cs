@@ -4,10 +4,9 @@ namespace LeaseDocumentIntelligence.Infrastructure.Services;
 
 using Azure.Identity;
 using LeaseDocumentIntelligence.Domain.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
-using System.Net.Http.Headers;
 
 public class FoundryAIService : IFoundryAIService
 {
@@ -182,7 +181,8 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
         // Check for local testing mode
         var useLocalTesting = _configuration.GetValue<bool>("Foundry:UseLocalTesting");
         if (useLocalTesting)
-        {            return GetMockExtractionResponse();
+        {
+            return GetMockExtractionResponse();
         }
 
         try
@@ -253,17 +253,17 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
                 foreach (var outputItem in output.EnumerateArray())
                 {
                     // Skip reasoning type, look for message type
-                    if (outputItem.TryGetProperty("type", out var typeProperty) && 
+                    if (outputItem.TryGetProperty("type", out var typeProperty) &&
                         typeProperty.GetString() == "message")
                     {
-                        if (outputItem.TryGetProperty("content", out var content) && 
-                            content.ValueKind == JsonValueKind.Array && 
+                        if (outputItem.TryGetProperty("content", out var content) &&
+                            content.ValueKind == JsonValueKind.Array &&
                             content.GetArrayLength() > 0)
                         {
                             var firstContent = content[0];
                             if (firstContent.TryGetProperty("text", out var text))
                             {
-                                messageContent = text.GetString();                                break;
+                                messageContent = text.GetString(); break;
                             }
                         }
                     }
