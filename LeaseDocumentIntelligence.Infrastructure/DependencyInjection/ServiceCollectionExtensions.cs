@@ -59,6 +59,7 @@ public static class ServiceCollectionExtensions
 
         // Repository - Scoped (uses singleton CosmosClient)
         services.AddScoped<IDocumentMetadataRepository, CosmosDocumentMetadataRepository>();
+        services.AddScoped<IFieldDefinitionRepository, CosmosFieldDefinitionRepository>();
 
         // HttpClientFactory for FoundryAI
         services.AddHttpClient("FoundryAI", client =>

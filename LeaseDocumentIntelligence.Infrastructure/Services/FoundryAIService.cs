@@ -49,6 +49,29 @@ public class FoundryAIService : IFoundryAIService
         }
     }
 
+    /// <summary>
+    /// Extracts fields using metadata-driven field definitions with extraction hints.
+    /// </summary>
+    public async Task<List<ExtractedField>> ExtractFieldsAsync(
+        string documentText,
+        List<FieldDefinition> fieldDefinitions,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var prompt = BuildExtractionPromptFromMetadata(documentText, fieldDefinitions);
+            var response = await CallFoundryModelAsync(prompt, cancellationToken);
+
+            var fields = ParseExtractionResponse(response, fieldDefinitions);
+            return fields;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during metadata-driven field extraction");
+            throw;
+        }
+    }
+
     public async Task<(ExtractedField Field, double Confidence)> ValidateExtractionAsync(
         string fieldName,
         string extractedValue,
@@ -87,6 +110,58 @@ Document Text:
 {documentText}
 
 Respond in JSON format with array of objects containing: fieldName, value, confidence, pageRef, clauseRef, excerpt";
+    }
+
+    /// <summary>
+    /// Builds extraction prompt from metadata-driven field definitions with hints.
+    /// </summary>
+    private string BuildExtractionPromptFromMetadata(string documentText, List<FieldDefinition> fieldDefinitions)
+    {
+        var fieldsBuilder = new System.Text.StringBuilder();
+        foreach (var field in fieldDefinitions.OrderBy(f => f.DisplayOrder))
+        {
+            fieldsBuilder.AppendLine($"- **{field.FieldName}** ({field.FieldType})");
+            fieldsBuilder.AppendLine($"  Description: {field.DisplayName}");
+            if (!string.IsNullOrEmpty(field.ExtractionHint))
+            {
+                fieldsBuilder.AppendLine($"  Hint: {field.ExtractionHint}");
+            }
+            fieldsBuilder.AppendLine($"  Required: {(field.IsRequired ? "Yes" : "No")}");
+            fieldsBuilder.AppendLine();
+        }
+
+        return $@"You are a commercial lease abstraction expert. Extract the following fields from the lease document.
+
+For each field, provide:
+1. The extracted value (use null if not found)
+2. A confidence score (0.0 to 1.0) indicating your certainty
+3. The page number where you found this information
+4. The exact clause reference (e.g., ""Section 3.1"") or a brief excerpt
+
+Fields to extract:
+{fieldsBuilder}
+
+Document Text:
+{documentText}
+
+IMPORTANT:
+- Use the hints provided to locate each field
+- Be precise with dates (use ISO 8601 format: YYYY-MM-DD)
+- For currency, include the amount without currency symbols
+- If a field cannot be found, set value to null and confidence to 0
+- Include the exact text excerpt that supports your extraction
+
+Respond ONLY with a valid JSON array:
+[
+  {{
+    ""fieldName"": ""FieldName"",
+    ""value"": ""extracted value or null"",
+    ""confidence"": 0.85,
+    ""pageRef"": 3,
+    ""clauseRef"": ""Section 3.1"",
+    ""excerpt"": ""exact text from document""
+  }}
+]";
     }
 
     private string BuildValidationPrompt(string fieldName, string extractedValue, string documentText)
@@ -208,6 +283,42 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
         catch (JsonException ex)
         {
             _logger.LogError(ex, "Error parsing extraction response JSON");
+        }
+
+        return fields;
+    }
+
+    /// <summary>
+    /// Parses extraction response and applies per-field confidence thresholds from metadata.
+    /// </summary>
+    private List<ExtractedField> ParseExtractionResponse(string response, List<FieldDefinition> fieldDefinitions)
+    {
+        // First, get base parsed fields
+        var fields = ParseExtractionResponse(response);
+
+        // Create lookup for field definitions
+        var fieldDefLookup = fieldDefinitions.ToDictionary(
+            f => f.FieldName,
+            f => f,
+            StringComparer.OrdinalIgnoreCase);
+
+        // Apply per-field confidence thresholds and enrich with metadata
+        foreach (var field in fields)
+        {
+            if (fieldDefLookup.TryGetValue(field.FieldName, out var definition))
+            {
+                // Mark as needing review if below per-field threshold
+                var threshold = definition.ConfidenceThreshold;
+                field.NeedsReview = field.Confidence < threshold;
+
+                // Log if field is below its specific threshold
+                if (field.NeedsReview)
+                {
+                    _logger.LogInformation(
+                        "Field {FieldName} confidence {Confidence:P0} below threshold {Threshold:P0}",
+                        field.FieldName, field.Confidence, threshold);
+                }
+            }
         }
 
         return fields;
