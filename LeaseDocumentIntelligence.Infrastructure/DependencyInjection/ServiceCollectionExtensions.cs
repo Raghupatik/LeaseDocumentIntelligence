@@ -59,11 +59,16 @@ public static class ServiceCollectionExtensions
 
         // Repository - Scoped (uses singleton CosmosClient)
         services.AddScoped<IDocumentMetadataRepository, CosmosDocumentMetadataRepository>();
+        services.AddScoped<IFieldDefinitionRepository, CosmosFieldDefinitionRepository>();
 
-        // HttpClientFactory for FoundryAI
+        // HttpClientFactory for FoundryAI and Azure OpenAI
         services.AddHttpClient("FoundryAI", client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5);
+        });
+        services.AddHttpClient("AzureOpenAI", client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(3);
         });
 
         // AI and processing services - Scoped
@@ -71,6 +76,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
         services.AddScoped<IExtractionService, ExtractionService>();
         services.AddScoped<IReviewQueueService, ReviewQueueService>();
+
+        // Embedding and Vector Search services
+        services.AddScoped<IEmbeddingService, EmbeddingService>();
+        services.AddScoped<IVectorSearchService, AzureAISearchService>();
 
         // Legacy in-memory repository (can be removed once Cosmos is fully integrated)
         services.AddScoped<ILeaseDocumentRepository, LeaseDocumentRepository>();

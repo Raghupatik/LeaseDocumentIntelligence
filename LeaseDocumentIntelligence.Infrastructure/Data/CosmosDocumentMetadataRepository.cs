@@ -48,7 +48,7 @@ public sealed class CosmosDocumentMetadataRepository : IDocumentMetadataReposito
         }
         catch (CosmosException ex)
         {
-            _logger.LogError(ex, "Cosmos error creating document. Status: {Status}, SubStatus: {SubStatus}, Message: {Message}", 
+            _logger.LogError(ex, "Cosmos error creating document. Status: {Status}, SubStatus: {SubStatus}, Message: {Message}",
                 ex.StatusCode, ex.SubStatusCode, ex.Message);
             throw;
         }
@@ -161,7 +161,8 @@ public sealed class CosmosDocumentMetadataRepository : IDocumentMetadataReposito
             metadata,
             metadata.Id,
             new PartitionKey(metadata.Pk),
-            cancellationToken: cancellationToken);    }
+            cancellationToken: cancellationToken);
+    }
 
     public async Task DeleteAsync(
         Guid documentId,
@@ -179,7 +180,8 @@ public sealed class CosmosDocumentMetadataRepository : IDocumentMetadataReposito
         await _container.DeleteItemAsync<DocumentMetadata>(
             metadata.Id,
             new PartitionKey(metadata.Pk),
-            cancellationToken: cancellationToken);    }
+            cancellationToken: cancellationToken);
+    }
 
     public async Task<IReadOnlyList<DocumentMetadata>> GetAllAsync(
         int pageSize = 100,

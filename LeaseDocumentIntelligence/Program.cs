@@ -1,10 +1,11 @@
 using Azure.Identity;
+using LeaseDocumentIntelligence.Domain.Interfaces;
 using LeaseDocumentIntelligence.Infrastructure.DependencyInjection;
-using Microsoft.Identity.Web;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
+using Microsoft.Identity.Web;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -98,7 +99,7 @@ builder.Services.AddScoped(sp =>
     var factory = sp.GetRequiredService<IHttpClientFactory>();
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
     var client = factory.CreateClient("LocalApi");
-    
+
     // Forward cookies from the current HTTP context to outgoing API requests
     var httpContext = httpContextAccessor.HttpContext;
     if (httpContext?.Request.Cookies.Count > 0)
@@ -106,7 +107,7 @@ builder.Services.AddScoped(sp =>
         var cookieHeader = string.Join("; ", httpContext.Request.Cookies.Select(c => $"{c.Key}={c.Value}"));
         client.DefaultRequestHeaders.Add("Cookie", cookieHeader);
     }
-    
+
     return client;
 });
 
@@ -150,5 +151,21 @@ app.MapGet("/logout", async (HttpContext context) =>
 });
 
 app.MapControllers();
+
+// Auto-seed field definitions at startup
+using (var scope = app.Services.CreateScope())
+{
+    var fieldDefRepo = scope.ServiceProvider.GetRequiredService<IFieldDefinitionRepository>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        await fieldDefRepo.SeedDefaultFieldsAsync();
+        logger.LogInformation("Field definitions seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Could not seed field definitions - will retry on next startup");
+    }
+}
 
 app.Run();

@@ -110,10 +110,23 @@ public class LeaseController : ControllerBase
 
             // Wait for extraction to complete
             var result = await _extractionService.ExtractLeaseDataAsync(createdDocument, cancellationToken);
-            // Update metadata with extraction results
-            metadata.Status = DocumentStatus.Completed;
+            // Update metadata with extraction results including actual fields
+            metadata.Status = result.ReviewQueueItems.Count > 0 ? DocumentStatus.ReviewRequired : DocumentStatus.Completed;
             metadata.ExtractedFieldCount = result.Fields.Count;
             metadata.ReviewRequiredCount = result.ReviewQueueItems.Count;
+            metadata.ExtractedFields = result.Fields.Select(f => new ExtractedField
+            {
+                Id = f.Id,
+                FieldName = f.FieldName,
+                ExtractedValue = f.ExtractedValue,
+                ConfidenceScore = f.ConfidenceScore,
+                PageReference = f.PageReference,
+                ClauseReference = f.ClauseReference,
+                RawExcerpt = f.RawExcerpt,
+                RequiresReview = f.RequiresReview,
+                LeaseDocumentId = documentId,
+                ExtractedAt = DateTime.UtcNow
+            }).ToList();
             await _metadataRepository.UpdateAsync(metadata, cancellationToken);
 
             return Ok(documentId);
@@ -293,22 +306,23 @@ public class LeaseController : ControllerBase
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of documents</returns>
-    [HttpGet]
+    [HttpGet("list")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<object>>> ListDocuments(
+    public async Task<ActionResult<List<LeaseDocument>>> ListDocuments(
         CancellationToken cancellationToken)
     {
         try
         {
-            var documents = await _repository.GetAllAsync(cancellationToken);
-            var response = documents.Select(d => new
+            // Get documents from Cosmos metadata (persistent)
+            var metadataList = await _metadataRepository.GetAllAsync(100, null, cancellationToken);
+            var response = metadataList.Select(m => new LeaseDocument
             {
-                d.Id,
-                d.FileName,
-                Status = d.Status.ToString(),
-                d.UploadedAt,
-                FieldCount = d.ExtractedFields.Count,
-                ReviewCount = d.ReviewQueueItems.Count(r => r.Status == Domain.Models.ReviewStatus.Pending)
+                Id = m.DocumentId,
+                FileName = m.FileName,
+                Status = m.Status,
+                UploadedAt = m.UploadedAt,
+                ExtractedFields = m.ExtractedFields
             }).ToList();
 
             return Ok(response);

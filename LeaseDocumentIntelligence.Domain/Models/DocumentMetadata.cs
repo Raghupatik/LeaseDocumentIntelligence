@@ -59,6 +59,7 @@ public class DocumentMetadata
     /// Current processing status
     /// </summary>
     [JsonPropertyName("status")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public DocumentStatus Status { get; set; } = DocumentStatus.Pending;
 
     /// <summary>
@@ -84,6 +85,12 @@ public class DocumentMetadata
     /// </summary>
     [JsonPropertyName("reviewRequiredCount")]
     public int ReviewRequiredCount { get; set; }
+
+    /// <summary>
+    /// Extracted fields from the document
+    /// </summary>
+    [JsonPropertyName("extractedFields")]
+    public List<ExtractedField> ExtractedFields { get; set; } = new();
 
     /// <summary>
     /// Partition key for Cosmos DB (using documentId for point reads)

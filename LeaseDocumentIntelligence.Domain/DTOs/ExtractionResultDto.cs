@@ -26,6 +26,8 @@ public class ExtractedFieldDto
 public class ReviewQueueItemDto
 {
     public Guid Id { get; set; }
+    public Guid DocumentId { get; set; }
+    public string FileName { get; set; } = string.Empty;
     public string FieldName { get; set; } = string.Empty;
     public string ExtractedValue { get; set; } = string.Empty;
     public double ConfidenceScore { get; set; }

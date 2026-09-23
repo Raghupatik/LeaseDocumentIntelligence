@@ -9,14 +9,17 @@ using Microsoft.Extensions.Logging;
 public class ReviewQueueService : IReviewQueueService
 {
     private readonly ILeaseDocumentRepository _repository;
+    private readonly IDocumentMetadataRepository _metadataRepository;
     private readonly ILogger<ReviewQueueService> _logger;
     private static readonly List<ReviewQueueItem> _reviewQueue = new();
 
     public ReviewQueueService(
         ILeaseDocumentRepository repository,
+        IDocumentMetadataRepository metadataRepository,
         ILogger<ReviewQueueService> logger)
     {
         _repository = repository;
+        _metadataRepository = metadataRepository;
         _logger = logger;
     }
 
@@ -61,24 +64,62 @@ public class ReviewQueueService : IReviewQueueService
         }
     }
 
-    public Task<List<ReviewQueueItemDto>> GetReviewQueueAsync(
+    public async Task<List<ReviewQueueItemDto>> GetReviewQueueAsync(
         CancellationToken cancellationToken = default)
     {
-        var items = _reviewQueue
-            .Where(r => r.Status == ReviewStatus.Pending)
-            .Select(r => new ReviewQueueItemDto
-            {
-                Id = r.Id,
-                FieldName = r.FieldName,
-                ExtractedValue = r.ExtractedValue,
-                ConfidenceScore = r.ConfidenceScore,
-                PageReference = r.PageReference,
-                ClauseReference = r.ClauseReference,
-                Status = r.Status.ToString()
-            })
-            .ToList();
+        var items = new List<ReviewQueueItemDto>();
 
-        return Task.FromResult(items);
+        try
+        {
+            // Get all documents that need review from Cosmos DB
+            var documents = await _metadataRepository.GetByStatusAsync(DocumentStatus.ReviewRequired, cancellationToken);
+
+            foreach (var doc in documents)
+            {
+                if (doc.ExtractedFields == null) continue;
+
+                // Get fields that require review based on per-field ConfidenceThreshold
+                var reviewFields = doc.ExtractedFields
+                    .Where(f => f.RequiresReview)
+                    .Select(f => new ReviewQueueItemDto
+                    {
+                        Id = f.Id != Guid.Empty ? f.Id : Guid.NewGuid(),
+                        DocumentId = doc.DocumentId,
+                        FileName = doc.FileName ?? "Unknown",
+                        FieldName = f.FieldName,
+                        ExtractedValue = f.ExtractedValue ?? "",
+                        ConfidenceScore = f.ConfidenceScore,
+                        PageReference = f.PageReference,
+                        ClauseReference = f.ClauseReference,
+                        Status = "Pending"
+                    });
+
+                items.AddRange(reviewFields);
+            }
+
+            _logger.LogInformation("Retrieved {Count} review items from Cosmos", items.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving review queue from Cosmos, falling back to in-memory");
+
+            // Fallback to in-memory queue
+            items = _reviewQueue
+                .Where(r => r.Status == ReviewStatus.Pending)
+                .Select(r => new ReviewQueueItemDto
+                {
+                    Id = r.Id,
+                    FieldName = r.FieldName,
+                    ExtractedValue = r.ExtractedValue,
+                    ConfidenceScore = r.ConfidenceScore,
+                    PageReference = r.PageReference,
+                    ClauseReference = r.ClauseReference,
+                    Status = r.Status.ToString()
+                })
+                .ToList();
+        }
+
+        return items;
     }
 
     public Task ApproveReviewItemAsync(

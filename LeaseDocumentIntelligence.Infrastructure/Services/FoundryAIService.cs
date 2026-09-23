@@ -4,10 +4,9 @@ namespace LeaseDocumentIntelligence.Infrastructure.Services;
 
 using Azure.Identity;
 using LeaseDocumentIntelligence.Domain.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
-using System.Net.Http.Headers;
 
 public class FoundryAIService : IFoundryAIService
 {
@@ -45,6 +44,29 @@ public class FoundryAIService : IFoundryAIService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during field extraction");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Extracts fields using metadata-driven field definitions with extraction hints.
+    /// </summary>
+    public async Task<List<ExtractedField>> ExtractFieldsAsync(
+        string documentText,
+        List<FieldDefinition> fieldDefinitions,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var prompt = BuildExtractionPromptFromMetadata(documentText, fieldDefinitions);
+            var response = await CallFoundryModelAsync(prompt, cancellationToken);
+
+            var fields = ParseExtractionResponse(response, fieldDefinitions);
+            return fields;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during metadata-driven field extraction");
             throw;
         }
     }
@@ -89,6 +111,58 @@ Document Text:
 Respond in JSON format with array of objects containing: fieldName, value, confidence, pageRef, clauseRef, excerpt";
     }
 
+    /// <summary>
+    /// Builds extraction prompt from metadata-driven field definitions with hints.
+    /// </summary>
+    private string BuildExtractionPromptFromMetadata(string documentText, List<FieldDefinition> fieldDefinitions)
+    {
+        var fieldsBuilder = new System.Text.StringBuilder();
+        foreach (var field in fieldDefinitions.OrderBy(f => f.DisplayOrder))
+        {
+            fieldsBuilder.AppendLine($"- **{field.FieldName}** ({field.FieldType})");
+            fieldsBuilder.AppendLine($"  Description: {field.DisplayName}");
+            if (!string.IsNullOrEmpty(field.ExtractionHint))
+            {
+                fieldsBuilder.AppendLine($"  Hint: {field.ExtractionHint}");
+            }
+            fieldsBuilder.AppendLine($"  Required: {(field.IsRequired ? "Yes" : "No")}");
+            fieldsBuilder.AppendLine();
+        }
+
+        return $@"You are a commercial lease abstraction expert. Extract the following fields from the lease document.
+
+For each field, provide:
+1. The extracted value (use null if not found)
+2. A confidence score (0.0 to 1.0) indicating your certainty
+3. The page number where you found this information
+4. The exact clause reference (e.g., ""Section 3.1"") or a brief excerpt
+
+Fields to extract:
+{fieldsBuilder}
+
+Document Text:
+{documentText}
+
+IMPORTANT:
+- Use the hints provided to locate each field
+- Be precise with dates (use ISO 8601 format: YYYY-MM-DD)
+- For currency, include the amount without currency symbols
+- If a field cannot be found, set value to null and confidence to 0
+- Include the exact text excerpt that supports your extraction
+
+Respond ONLY with a valid JSON array:
+[
+  {{
+    ""fieldName"": ""FieldName"",
+    ""value"": ""extracted value or null"",
+    ""confidence"": 0.85,
+    ""pageRef"": 3,
+    ""clauseRef"": ""Section 3.1"",
+    ""excerpt"": ""exact text from document""
+  }}
+]";
+    }
+
     private string BuildValidationPrompt(string fieldName, string extractedValue, string documentText)
     {
         return $@"Validate the following extraction:
@@ -107,36 +181,43 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
         // Check for local testing mode
         var useLocalTesting = _configuration.GetValue<bool>("Foundry:UseLocalTesting");
         if (useLocalTesting)
-        {            return GetMockExtractionResponse();
+        {
+            return GetMockExtractionResponse();
         }
 
         try
         {
-            // Azure AI Foundry endpoint format: {endpoint}/openai/v1/responses
-            var url = $"{_foundryEndpoint.TrimEnd('/')}/openai/v1/responses";
+            // Azure OpenAI endpoint format: {endpoint}/openai/deployments/{model}/chat/completions?api-version={version}
+            var apiVersion = _configuration["Foundry:ApiVersion"] ?? "2024-06-01";
+            var url = $"{_foundryEndpoint.TrimEnd('/')}/openai/deployments/{_modelName}/chat/completions?api-version={apiVersion}";
+            _logger.LogInformation("Calling Azure OpenAI: {Url}", url);
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
             // Use API Key if configured, otherwise use Managed Identity
             var apiKey = _configuration["Foundry:ApiKey"];
             if (!string.IsNullOrEmpty(apiKey))
             {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                request.Headers.Add("api-key", apiKey);
             }
             else
             {
                 var tokenProvider = new DefaultAzureCredential();
                 var token = await tokenProvider.GetTokenAsync(
-                    new Azure.Core.TokenRequestContext(new[] { "https://ai.azure.com/.default" }),
+                    new Azure.Core.TokenRequestContext(new[] { "https://cognitiveservices.azure.com/.default" }),
                     cancellationToken);
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.Token);
             }
 
-            // Azure AI Foundry uses 'input' not 'messages' and 'instructions' for system prompt
-            var fullPrompt = "You are a lease document extraction AI. Extract information accurately and always provide citations.\n\n" + prompt;
+            // Azure OpenAI chat completions format
             var payload = new
             {
-                model = _modelName,
-                input = fullPrompt
+                messages = new[]
+                {
+                    new { role = "system", content = "You are a lease document extraction AI. Extract information accurately and always provide citations." },
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.1,
+                max_tokens = 4000
             };
 
             request.Content = new StringContent(
@@ -144,7 +225,7 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
                 System.Text.Encoding.UTF8,
                 "application/json");
 
-            using var httpClient = _httpClientFactory.CreateClient();
+            using var httpClient = _httpClientFactory.CreateClient("FoundryAI");
             var response = await httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
@@ -178,17 +259,17 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
                 foreach (var outputItem in output.EnumerateArray())
                 {
                     // Skip reasoning type, look for message type
-                    if (outputItem.TryGetProperty("type", out var typeProperty) && 
+                    if (outputItem.TryGetProperty("type", out var typeProperty) &&
                         typeProperty.GetString() == "message")
                     {
-                        if (outputItem.TryGetProperty("content", out var content) && 
-                            content.ValueKind == JsonValueKind.Array && 
+                        if (outputItem.TryGetProperty("content", out var content) &&
+                            content.ValueKind == JsonValueKind.Array &&
                             content.GetArrayLength() > 0)
                         {
                             var firstContent = content[0];
                             if (firstContent.TryGetProperty("text", out var text))
                             {
-                                messageContent = text.GetString();                                break;
+                                messageContent = text.GetString(); break;
                             }
                         }
                     }
@@ -208,6 +289,42 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
         catch (JsonException ex)
         {
             _logger.LogError(ex, "Error parsing extraction response JSON");
+        }
+
+        return fields;
+    }
+
+    /// <summary>
+    /// Parses extraction response and applies per-field confidence thresholds from metadata.
+    /// </summary>
+    private List<ExtractedField> ParseExtractionResponse(string response, List<FieldDefinition> fieldDefinitions)
+    {
+        // First, get base parsed fields
+        var fields = ParseExtractionResponse(response);
+
+        // Create lookup for field definitions
+        var fieldDefLookup = fieldDefinitions.ToDictionary(
+            f => f.FieldName,
+            f => f,
+            StringComparer.OrdinalIgnoreCase);
+
+        // Apply per-field confidence thresholds and enrich with metadata
+        foreach (var field in fields)
+        {
+            if (fieldDefLookup.TryGetValue(field.FieldName, out var definition))
+            {
+                // Mark as needing review if below per-field threshold
+                var threshold = definition.ConfidenceThreshold;
+                field.RequiresReview = field.ConfidenceScore < threshold;
+
+                // Log if field is below its specific threshold
+                if (field.RequiresReview)
+                {
+                    _logger.LogInformation(
+                        "Field {FieldName} confidence {Confidence:P0} below threshold {Threshold:P0}",
+                        field.FieldName, field.ConfidenceScore, threshold);
+                }
+            }
         }
 
         return fields;
@@ -264,13 +381,13 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
                         Id = Guid.NewGuid(),
                         FieldName = item.TryGetProperty("fieldName", out var fn) ? fn.GetString() ?? string.Empty : string.Empty,
                         ExtractedValue = extractedValue,
-                        ConfidenceScore = item.TryGetProperty("confidence", out var conf) ? conf.GetDouble() : 0.5,
-                        PageReference = item.TryGetProperty("pageRef", out var pageRef) ? pageRef.GetString() : null,
-                        ClauseReference = item.TryGetProperty("clauseRef", out var clauseRef) ? clauseRef.GetString() : null,
-                        RawExcerpt = item.TryGetProperty("excerpt", out var excerpt) ? excerpt.GetString() : null,
+                        ConfidenceScore = item.TryGetProperty("confidence", out var conf) ? GetDoubleValue(conf) : 0.5,
+                        PageReference = item.TryGetProperty("pageRef", out var pageRef) ? GetStringValue(pageRef) : null,
+                        ClauseReference = item.TryGetProperty("clauseRef", out var clauseRef) ? GetStringValue(clauseRef) : null,
+                        RawExcerpt = item.TryGetProperty("excerpt", out var excerpt) ? GetStringValue(excerpt) : null,
                         ExtractedAt = DateTime.UtcNow,
                         FieldType = FieldType.Text,
-                        RequiresReview = item.TryGetProperty("confidence", out var confReview) && confReview.GetDouble() < 0.7
+                        RequiresReview = false // Set by ApplyFieldThresholds based on per-field ConfidenceThreshold
                     };
                     fields.Add(field);
                 }
@@ -282,6 +399,29 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
         }
 
         return fields;
+    }
+
+    private static string? GetStringValue(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.GetRawText(),
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            JsonValueKind.Null => null,
+            _ => element.GetRawText()
+        };
+    }
+
+    private static double GetDoubleValue(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.String => double.TryParse(element.GetString(), out var d) ? d : 0.5,
+            _ => 0.5
+        };
     }
 
     private (ExtractedField, double) ParseValidationResponse(string fieldName, string extractedValue, string response)
@@ -327,7 +467,7 @@ Respond with JSON containing: isAccurate (boolean), confidence (0-1), pageRef, c
             ConfidenceScore = confidence,
             ExtractedAt = DateTime.UtcNow,
             FieldType = FieldType.Text,
-            RequiresReview = confidence < 0.7
+            RequiresReview = false // Validated/corrected fields don't need additional review
         };
 
         return (field, confidence);

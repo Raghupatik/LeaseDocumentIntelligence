@@ -37,8 +37,8 @@ public class KeyVaultSecretProvider : ISecretProvider, IDisposable
 
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _cacheDuration = TimeSpan.FromMinutes(options.Value.CacheDurationMinutes > 0 
-            ? options.Value.CacheDurationMinutes 
+        _cacheDuration = TimeSpan.FromMinutes(options.Value.CacheDurationMinutes > 0
+            ? options.Value.CacheDurationMinutes
             : 60);
 
         var credential = new DefaultAzureCredential();
