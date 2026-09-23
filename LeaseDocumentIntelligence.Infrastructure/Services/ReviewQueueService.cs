@@ -64,43 +64,38 @@ public class ReviewQueueService : IReviewQueueService
     public Task<List<ReviewQueueItemDto>> GetReviewQueueAsync(
         CancellationToken cancellationToken = default)
     {
-        return Task.Run(() =>
-        {
-            var items = _reviewQueue
-                .Where(r => r.Status == ReviewStatus.Pending)
-                .Select(r => new ReviewQueueItemDto
-                {
-                    Id = r.Id,
-                    FieldName = r.FieldName,
-                    ExtractedValue = r.ExtractedValue,
-                    ConfidenceScore = r.ConfidenceScore,
-                    PageReference = r.PageReference,
-                    ClauseReference = r.ClauseReference,
-                    Status = r.Status.ToString()
-                })
-                .ToList();
+        var items = _reviewQueue
+            .Where(r => r.Status == ReviewStatus.Pending)
+            .Select(r => new ReviewQueueItemDto
+            {
+                Id = r.Id,
+                FieldName = r.FieldName,
+                ExtractedValue = r.ExtractedValue,
+                ConfidenceScore = r.ConfidenceScore,
+                PageReference = r.PageReference,
+                ClauseReference = r.ClauseReference,
+                Status = r.Status.ToString()
+            })
+            .ToList();
 
-            return items;
-        }, cancellationToken);
+        return Task.FromResult(items);
     }
 
     public Task ApproveReviewItemAsync(
         Guid reviewItemId,
         CancellationToken cancellationToken = default)
     {
-        return Task.Run(() =>
+        var item = _reviewQueue.FirstOrDefault(r => r.Id == reviewItemId);
+        if (item != null)
         {
-            var item = _reviewQueue.FirstOrDefault(r => r.Id == reviewItemId);
-            if (item != null)
-            {
-                item.Status = ReviewStatus.Approved;
-                item.ReviewedAt = DateTime.UtcNow;
-            }
-            else
-            {
-                _logger.LogWarning("Review item {ReviewItemId} not found", reviewItemId);
-            }
-        }, cancellationToken);
+            item.Status = ReviewStatus.Approved;
+            item.ReviewedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _logger.LogWarning("Review item {ReviewItemId} not found", reviewItemId);
+        }
+        return Task.CompletedTask;
     }
 
     public Task RejectReviewItemAsync(
@@ -109,20 +104,18 @@ public class ReviewQueueService : IReviewQueueService
         string notes,
         CancellationToken cancellationToken = default)
     {
-        return Task.Run(() =>
+        var item = _reviewQueue.FirstOrDefault(r => r.Id == reviewItemId);
+        if (item != null)
         {
-            var item = _reviewQueue.FirstOrDefault(r => r.Id == reviewItemId);
-            if (item != null)
-            {
-                item.Status = ReviewStatus.Corrected;
-                item.ReviewedValue = correctedValue;
-                item.ReviewNotes = notes;
-                item.ReviewedAt = DateTime.UtcNow;
-            }
-            else
-            {
-                _logger.LogWarning("Review item {ReviewItemId} not found", reviewItemId);
-            }
-        }, cancellationToken);
+            item.Status = ReviewStatus.Corrected;
+            item.ReviewedValue = correctedValue;
+            item.ReviewNotes = notes;
+            item.ReviewedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _logger.LogWarning("Review item {ReviewItemId} not found", reviewItemId);
+        }
+        return Task.CompletedTask;
     }
 }

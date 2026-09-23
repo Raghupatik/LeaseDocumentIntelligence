@@ -36,9 +36,11 @@ public class ExtractionService : IExtractionService
         try
         {
             document.Status = DocumentStatus.Processing;
-            await _repository.UpdateAsync(document, cancellationToken);            var documentText = await _documentProcessing.ExtractTextFromPdfAsync(
+            await _repository.UpdateAsync(document, cancellationToken);            
+            var documentText = await _documentProcessing.ExtractTextFromPdfAsync(
                 document.FileContent,
-                cancellationToken);            var fieldDefs = LeaseFieldDefinitions.Fields.ToDictionary(
+                cancellationToken);            
+            var fieldDefs = LeaseFieldDefinitions.Fields.ToDictionary(
                 f => f.Key,
                 f => f.Value.Name);
 

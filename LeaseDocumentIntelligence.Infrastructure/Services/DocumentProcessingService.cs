@@ -48,26 +48,25 @@ public class DocumentProcessingService : IDocumentProcessingService
 
     public Task<bool> ValidateDocumentAsync(string fileName, string contentType, CancellationToken cancellationToken = default)
     {
-        return Task.Run(() =>
+        if (string.IsNullOrWhiteSpace(fileName))
         {
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                _logger.LogWarning("Validation failed: Empty filename");
-                return false;
-            }
+            _logger.LogWarning("Validation failed: Empty filename");
+            return Task.FromResult(false);
+        }
 
-            if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogWarning("Validation failed: Invalid file extension for {FileName}", fileName);
-                return false;
-            }
+        if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Validation failed: Invalid file extension for {FileName}", fileName);
+            return Task.FromResult(false);
+        }
 
-            // Accept if content type is PDF or empty (Blazor InputFile may not set it)
-            if (!string.IsNullOrEmpty(contentType) && !AllowedContentTypes.Contains(contentType))
-            {
-                _logger.LogWarning("Validation failed: Invalid content type {ContentType}", contentType);
-                return false;
-            }            return true;
-        }, cancellationToken);
+        // Accept if content type is PDF or empty (Blazor InputFile may not set it)
+        if (!string.IsNullOrEmpty(contentType) && !AllowedContentTypes.Contains(contentType))
+        {
+            _logger.LogWarning("Validation failed: Invalid content type {ContentType}", contentType);
+            return Task.FromResult(false);
+        }
+
+        return Task.FromResult(true);
     }
 }
