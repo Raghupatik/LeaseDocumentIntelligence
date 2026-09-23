@@ -68,7 +68,7 @@ public static class ServiceCollectionExtensions
         });
         services.AddHttpClient("AzureOpenAI", client =>
         {
-            client.Timeout = TimeSpan.FromMinutes(2);
+            client.Timeout = TimeSpan.FromMinutes(3);
         });
 
         // AI and processing services - Scoped

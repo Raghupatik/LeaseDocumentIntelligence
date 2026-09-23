@@ -14,6 +14,7 @@ public class ExtractionServiceTests
     private readonly Mock<IFoundryAIService> _mockFoundryAI;
     private readonly Mock<IReviewQueueService> _mockReviewQueue;
     private readonly Mock<ILeaseDocumentRepository> _mockRepository;
+    private readonly Mock<IDocumentMetadataRepository> _mockMetadataRepository;
     private readonly Mock<IFieldDefinitionRepository> _mockFieldDefinitionRepo;
     private readonly Mock<IVectorSearchService> _mockSearchService;
     private readonly Mock<ILogger<ExtractionService>> _mockLogger;
@@ -25,6 +26,7 @@ public class ExtractionServiceTests
         _mockFoundryAI = new Mock<IFoundryAIService>();
         _mockReviewQueue = new Mock<IReviewQueueService>();
         _mockRepository = new Mock<ILeaseDocumentRepository>();
+        _mockMetadataRepository = new Mock<IDocumentMetadataRepository>();
         _mockFieldDefinitionRepo = new Mock<IFieldDefinitionRepository>();
         _mockSearchService = new Mock<IVectorSearchService>();
         _mockLogger = new Mock<ILogger<ExtractionService>>();
@@ -38,6 +40,7 @@ public class ExtractionServiceTests
             _mockFoundryAI.Object,
             _mockReviewQueue.Object,
             _mockRepository.Object,
+            _mockMetadataRepository.Object,
             _mockFieldDefinitionRepo.Object,
             _mockSearchService.Object,
             _mockLogger.Object);

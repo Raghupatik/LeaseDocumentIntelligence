@@ -1,4 +1,5 @@
 using Azure.Identity;
+using LeaseDocumentIntelligence.Domain.Interfaces;
 using LeaseDocumentIntelligence.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -150,5 +151,21 @@ app.MapGet("/logout", async (HttpContext context) =>
 });
 
 app.MapControllers();
+
+// Auto-seed field definitions at startup
+using (var scope = app.Services.CreateScope())
+{
+    var fieldDefRepo = scope.ServiceProvider.GetRequiredService<IFieldDefinitionRepository>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        await fieldDefRepo.SeedDefaultFieldsAsync();
+        logger.LogInformation("Field definitions seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Could not seed field definitions - will retry on next startup");
+    }
+}
 
 app.Run();

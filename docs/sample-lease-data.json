@@ -1,0 +1,82 @@
+{
+  "leaseDocument": {
+    "fileName": "Texas-Commercial-Lease-Agreement.pdf",
+    "extractedFields": [
+      {
+        "fieldName": "TenantName",
+        "value": "Raghu",
+        "confidence": 0.95
+      },
+      {
+        "fieldName": "LandlordName",
+        "value": "Newmark Property Management LLC",
+        "confidence": 0.95
+      },
+      {
+        "fieldName": "PropertyAddress",
+        "value": "1234 Commerce Street, Suite 500, Dallas, TX 75201",
+        "confidence": 0.92
+      },
+      {
+        "fieldName": "BaseRent",
+        "value": "5500.00",
+        "confidence": 0.90
+      },
+      {
+        "fieldName": "RentFrequency",
+        "value": "Monthly",
+        "confidence": 0.95
+      },
+      {
+        "fieldName": "SecurityDeposit",
+        "value": "11000.00",
+        "confidence": 0.88
+      },
+      {
+        "fieldName": "CommencementDate",
+        "value": "2026-01-01",
+        "confidence": 0.93
+      },
+      {
+        "fieldName": "TerminationDate",
+        "value": "2031-12-31",
+        "confidence": 0.93
+      },
+      {
+        "fieldName": "LeaseTerm",
+        "value": "60 months",
+        "confidence": 0.90
+      },
+      {
+        "fieldName": "RentEscalation",
+        "value": "3% annually",
+        "confidence": 0.85
+      },
+      {
+        "fieldName": "CAMCharges",
+        "value": "12.50 per sq ft annually",
+        "confidence": 0.82
+      },
+      {
+        "fieldName": "SquareFootage",
+        "value": "2500",
+        "confidence": 0.88
+      },
+      {
+        "fieldName": "RenewalOption",
+        "value": "Two 5-year renewal options at market rate",
+        "confidence": 0.80
+      },
+      {
+        "fieldName": "TerminationClause",
+        "value": "90 days written notice required",
+        "confidence": 0.85
+      },
+      {
+        "fieldName": "PermittedUse",
+        "value": "General office and technology services",
+        "confidence": 0.90
+      }
+    ]
+  }
+}

@@ -138,21 +138,22 @@
                 <div class="accordion" id="fieldsAccordion">
                     @foreach (var (field, index) in result.Fields.Select((f, i) => (f, i)))
                     {
+                        var fieldId = $"field-{index}";
                         <div class="accordion-item">
                             <h2 class="accordion-header">
-                                <button class="accordion-button @(field.ConfidenceScore >= 0.7 ? "bg-light" : "bg-warning")" 
+                                <button class="accordion-button collapsed @(field.ConfidenceScore >= 0.7 ? "bg-light" : "bg-warning")" 
                                         type="button" 
                                         data-bs-toggle="collapse" 
-                                        data-bs-target="#field@index" 
-                                        aria-expanded="@(index == 0 ? "true" : "false")" 
-                                        aria-controls="field@index">
+                                        data-bs-target="#@fieldId" 
+                                        aria-expanded="false" 
+                                        aria-controls="@fieldId">
                                     <strong>@field.FieldName</strong>
                                     <span class="badge @(field.ConfidenceScore >= 0.7 ? "bg-success ms-2" : "bg-warning ms-2")">
                                         @field.ConfidenceScore.ToString("P0")
                                     </span>
                                 </button>
                             </h2>
-                            <div id="field@index" class="accordion-collapse collapse @(index == 0 ? "show" : "")" data-bs-parent="#fieldsAccordion">
+                            <div id="@fieldId" class="accordion-collapse collapse" data-bs-parent="#fieldsAccordion">
                                 <div class="accordion-body">
                                     <p><strong>Value:</strong> <code>@field.ExtractedValue</code></p>
                                     <p><strong>Type:</strong> @field.FieldType</p>

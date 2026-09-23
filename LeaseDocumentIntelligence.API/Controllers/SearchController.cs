@@ -2,8 +2,11 @@ namespace LeaseDocumentIntelligence.API.Controllers;
 
 using LeaseDocumentIntelligence.Domain.DTOs;
 using LeaseDocumentIntelligence.Domain.Interfaces;
+using LeaseDocumentIntelligence.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// API endpoints for semantic search over lease documents.
@@ -43,7 +46,7 @@ public class SearchController : ControllerBase
 
         _logger.LogInformation("Searching with query: {Query}", request.Query);
 
-        var options = new SearchOptions
+        var options = new LeaseSearchOptions
         {
             Top = request.Top,
             TenantFilter = request.TenantFilter,
@@ -84,7 +87,7 @@ public class SearchController : ControllerBase
             return BadRequest("Query parameter 'q' is required");
         }
 
-        var options = new SearchOptions
+        var options = new LeaseSearchOptions
         {
             Top = top,
             TenantFilter = tenant,
@@ -105,5 +108,55 @@ public class SearchController : ControllerBase
     {
         await _searchService.EnsureIndexExistsAsync(cancellationToken);
         return Ok(new { message = "Search index initialized successfully" });
+    }
+
+    /// <summary>
+    /// Re-index all documents from Cosmos DB. Use when search results are stale.
+    /// </summary>
+    [HttpPost("reindex")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ReindexAll(
+        [FromServices] IDocumentMetadataRepository metadataRepo,
+        CancellationToken cancellationToken)
+    {
+        var documents = await metadataRepo.GetAllAsync(1000, null, cancellationToken);
+        var indexed = 0;
+        var errors = new List<string>();
+
+        foreach (var metadata in documents)
+        {
+            try
+            {
+                // Build a LeaseDocument from metadata for indexing
+                var leaseDoc = new LeaseDocument
+                {
+                    Id = metadata.DocumentId,
+                    FileName = metadata.FileName,
+                    Status = metadata.Status,
+                    UploadedAt = metadata.UploadedAt,
+                    ExtractedFields = metadata.ExtractedFields ?? []
+                };
+
+                // Build document text from extracted fields for better search
+                var documentText = string.Join("\n", 
+                    metadata.ExtractedFields?.Select(f => $"{f.FieldName}: {f.ExtractedValue}") ?? []);
+
+                await _searchService.IndexDocumentAsync(leaseDoc, documentText, cancellationToken);
+                indexed++;
+                _logger.LogInformation("Re-indexed document {DocumentId}", metadata.DocumentId);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{metadata.DocumentId}: {ex.Message}");
+                _logger.LogWarning(ex, "Failed to re-index document {DocumentId}", metadata.DocumentId);
+            }
+        }
+
+        return Ok(new { 
+            message = $"Re-indexed {indexed} documents", 
+            total = documents.Count,
+            errors = errors.Count > 0 ? errors : null 
+        });
     }
 }

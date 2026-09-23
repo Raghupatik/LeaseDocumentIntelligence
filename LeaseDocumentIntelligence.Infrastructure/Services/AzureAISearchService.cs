@@ -44,13 +44,18 @@ public class AzureAISearchService : IVectorSearchService
 
         // Use API Key if configured, otherwise Managed Identity
         var apiKey = configuration["AzureAISearch:ApiKey"];
+        var options = new SearchClientOptions
+        {
+            Retry = { NetworkTimeout = TimeSpan.FromMinutes(3) }
+        };
+
         if (!string.IsNullOrEmpty(apiKey))
         {
-            _indexClient = new SearchIndexClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+            _indexClient = new SearchIndexClient(new Uri(endpoint), new AzureKeyCredential(apiKey), options);
         }
         else
         {
-            _indexClient = new SearchIndexClient(new Uri(endpoint), new DefaultAzureCredential());
+            _indexClient = new SearchIndexClient(new Uri(endpoint), new DefaultAzureCredential(), options);
         }
     }
 
@@ -130,13 +135,16 @@ public class AzureAISearchService : IVectorSearchService
     {
         try
         {
+            // Ensure index exists before indexing
+            await EnsureIndexExistsAsync(cancellationToken);
+
             // Generate embedding for document content
             var contentForEmbedding = BuildContentForEmbedding(document, documentText);
             var embedding = await _embeddingService.GenerateEmbeddingAsync(contentForEmbedding, cancellationToken);
 
             // Build searchable fields text
             var extractedFieldsText = string.Join(" | ", 
-                document.ExtractedFields?.Select(f => $"{f.FieldName}: {f.Value}") ?? []);
+                document.ExtractedFields?.Select(f => $"{f.FieldName}: {f.ExtractedValue}") ?? []);
 
             var searchDoc = new Dictionary<string, object>
             {
@@ -164,10 +172,10 @@ public class AzureAISearchService : IVectorSearchService
         }
     }
 
-    public async Task<SearchResultDto> SearchAsync(string query, SearchOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<SearchResultDto> SearchAsync(string query, LeaseSearchOptions? options = null, CancellationToken cancellationToken = default)
     {
         var startTime = DateTime.UtcNow;
-        options ??= new SearchOptions();
+        options ??= new LeaseSearchOptions();
 
         try
         {
@@ -231,7 +239,7 @@ public class AzureAISearchService : IVectorSearchService
                     try
                     {
                         var fields = JsonSerializer.Deserialize<List<ExtractedField>>(fieldsJson.ToString() ?? "[]");
-                        hit.ExtractedFields = fields?.ToDictionary(f => f.FieldName, f => f.Value ?? "") ?? [];
+                        hit.ExtractedFields = fields?.ToDictionary(f => f.FieldName, f => f.ExtractedValue ?? "") ?? [];
                     }
                     catch { /* Ignore parse errors */ }
                 }
@@ -254,7 +262,7 @@ public class AzureAISearchService : IVectorSearchService
         }
     }
 
-    public async Task<ReasonedSearchResultDto> SearchWithReasoningAsync(string query, SearchOptions? options = null, CancellationToken cancellationToken = default)
+    public async Task<ReasonedSearchResultDto> SearchWithReasoningAsync(string query, LeaseSearchOptions? options = null, CancellationToken cancellationToken = default)
     {
         // First perform the search
         var searchResults = await SearchAsync(query, options, cancellationToken);
@@ -266,23 +274,27 @@ public class AzureAISearchService : IVectorSearchService
 
         foreach (var hit in searchResults.Hits.Take(5))
         {
-            contextBuilder.AppendLine($"Document: {hit.FileName}");
+            contextBuilder.AppendLine($"=== LEASE DOCUMENT: {hit.FileName} ===");
             contextBuilder.AppendLine($"Tenant: {hit.TenantName}");
             contextBuilder.AppendLine($"Property: {hit.PropertyName}");
             contextBuilder.AppendLine($"Relevance Score: {hit.Score:P0}");
-            contextBuilder.AppendLine("Key Fields:");
-            foreach (var field in hit.ExtractedFields.Take(10))
+            contextBuilder.AppendLine();
+            contextBuilder.AppendLine("EXTRACTED LEASE DATA (use these exact values to answer questions):");
+            foreach (var field in hit.ExtractedFields)
             {
-                contextBuilder.AppendLine($"  - {field.Key}: {field.Value}");
+                contextBuilder.AppendLine($"  • {field.Key}: {field.Value}");
             }
             if (hit.Highlights.Count > 0)
             {
-                contextBuilder.AppendLine("Relevant Excerpts:");
+                contextBuilder.AppendLine();
+                contextBuilder.AppendLine("Relevant Text Excerpts:");
                 foreach (var highlight in hit.Highlights.Take(3))
                 {
                     contextBuilder.AppendLine($"  \"{StripHtmlTags(highlight)}\"");
                 }
             }
+            contextBuilder.AppendLine();
+            contextBuilder.AppendLine("---");
             contextBuilder.AppendLine();
         }
 
@@ -318,21 +330,27 @@ public class AzureAISearchService : IVectorSearchService
 
     private async Task<ReasoningResult> GenerateReasoningAsync(string query, string context, List<SearchHitDto> hits, CancellationToken cancellationToken)
     {
-        var prompt = $@"You are a commercial lease analysis expert. A user searched for: ""{query}""
+        var prompt = $@"You are a commercial lease analysis expert. A user asked: ""{query}""
+
+IMPORTANT: Your PRIMARY task is to DIRECTLY ANSWER the user's question using the SPECIFIC DATA from the search results below.
+- If they ask for a date, give the EXACT date (e.g., ""Your lease expires on September 18, 2031"")
+- If they ask for an amount, give the EXACT amount (e.g., ""Your monthly rent is $10,000"")
+- If they ask about a term, quote the SPECIFIC clause or value
+- Do NOT give generic descriptions - give the ACTUAL values from the extracted fields
 
 Based on the search results below, provide:
-1. A concise summary (2-3 sentences) of what was found
-2. Your reasoning about why these documents match and their relevance
-3. 3-5 key insights from the matching leases
+1. A DIRECT ANSWER to the question with specific values/dates/amounts from the lease data
+2. Brief reasoning explaining where you found this information
+3. 2-3 key insights related to the question
 4. 2-3 suggested follow-up questions
 
 {context}
 
 Respond in JSON format:
 {{
-  ""summary"": ""...'",
-  ""reasoning"": ""..."",
-  ""keyInsights"": [""..."", ""...""],
+  ""summary"": ""<DIRECT ANSWER with specific values from the data>"",
+  ""reasoning"": ""<explain which document/field contains this information>"",
+  ""keyInsights"": [""<specific insight 1>"", ""<specific insight 2>""],
   ""suggestedQuestions"": [""..."", ""...""]
 }}";
 
@@ -494,7 +512,7 @@ Respond in JSON format:
         {
             foreach (var field in document.ExtractedFields.Where(f => f.ConfidenceScore > 0.5))
             {
-                builder.AppendLine($"{field.FieldName}: {field.Value}");
+                builder.AppendLine($"{field.FieldName}: {field.ExtractedValue}");
             }
         }
 
@@ -509,7 +527,7 @@ Respond in JSON format:
     {
         return document.ExtractedFields?
             .FirstOrDefault(f => f.FieldName.Equals(fieldName, StringComparison.OrdinalIgnoreCase))
-            ?.Value ?? "";
+            ?.ExtractedValue ?? "";
     }
 
     private static string TruncateText(string text, int maxLength)

@@ -16,12 +16,12 @@ public interface IVectorSearchService
     /// <summary>
     /// Searches for similar documents using semantic/vector search.
     /// </summary>
-    Task<SearchResultDto> SearchAsync(string query, SearchOptions? options = null, CancellationToken cancellationToken = default);
+    Task<SearchResultDto> SearchAsync(string query, LeaseSearchOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Performs hybrid search (keyword + vector) with AI-powered reasoning.
     /// </summary>
-    Task<ReasonedSearchResultDto> SearchWithReasoningAsync(string query, SearchOptions? options = null, CancellationToken cancellationToken = default);
+    Task<ReasonedSearchResultDto> SearchWithReasoningAsync(string query, LeaseSearchOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a document from the search index.
@@ -35,13 +35,17 @@ public interface IVectorSearchService
 }
 
 /// <summary>
-/// Options for search queries.
+/// Options for lease search queries.
 /// </summary>
-public class SearchOptions
+public class LeaseSearchOptions
 {
     public int Top { get; set; } = 10;
     public bool IncludeExcerpts { get; set; } = true;
     public string? TenantFilter { get; set; }
-    public double MinScore { get; set; } = 0.5;
+    /// <summary>
+    /// Minimum relevance score (0.0-1.0). Lower values return more results.
+    /// Default 0.01 to include most matches - AI reasoning will filter irrelevant ones.
+    /// </summary>
+    public double MinScore { get; set; } = 0.01;
     public bool UseHybridSearch { get; set; } = true;
 }

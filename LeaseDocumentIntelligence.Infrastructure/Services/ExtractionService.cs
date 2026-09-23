@@ -13,6 +13,7 @@ public class ExtractionService : IExtractionService
     private readonly IFoundryAIService _foundryAI;
     private readonly IReviewQueueService _reviewQueue;
     private readonly ILeaseDocumentRepository _repository;
+    private readonly IDocumentMetadataRepository _metadataRepository;
     private readonly IFieldDefinitionRepository _fieldDefinitionRepository;
     private readonly IVectorSearchService _searchService;
     private readonly ILogger<ExtractionService> _logger;
@@ -22,6 +23,7 @@ public class ExtractionService : IExtractionService
         IFoundryAIService foundryAI,
         IReviewQueueService reviewQueue,
         ILeaseDocumentRepository repository,
+        IDocumentMetadataRepository metadataRepository,
         IFieldDefinitionRepository fieldDefinitionRepository,
         IVectorSearchService searchService,
         ILogger<ExtractionService> logger)
@@ -30,6 +32,7 @@ public class ExtractionService : IExtractionService
         _foundryAI = foundryAI;
         _reviewQueue = reviewQueue;
         _repository = repository;
+        _metadataRepository = metadataRepository;
         _fieldDefinitionRepository = fieldDefinitionRepository;
         _searchService = searchService;
         _logger = logger;
@@ -80,9 +83,9 @@ public class ExtractionService : IExtractionService
 
             document.ExtractedFields = extractedFields;
 
-            // Fields marked NeedsReview by FoundryAI (per-field threshold) or fallback to 0.7
+            // Fields marked RequiresReview by FoundryAI based on per-field ConfidenceThreshold
             var fieldsForReview = extractedFields
-                .Where(f => f.NeedsReview || f.ConfidenceScore < 0.7)
+                .Where(f => f.RequiresReview)
                 .ToList();
 
             if (fieldsForReview.Count > 0)
@@ -124,13 +127,51 @@ public class ExtractionService : IExtractionService
         Guid documentId,
         CancellationToken cancellationToken = default)
     {
+        // Try Cosmos metadata first (persistent storage)
+        var metadata = await _metadataRepository.GetByIdAsync(documentId, cancellationToken);
+        if (metadata != null)
+        {
+            var fields = metadata.ExtractedFields.Select(f => new ExtractedFieldDto
+            {
+                Id = f.Id,
+                FieldName = f.FieldName,
+                ExtractedValue = f.ExtractedValue,
+                ConfidenceScore = f.ConfidenceScore,
+                PageReference = f.PageReference,
+                ClauseReference = f.ClauseReference,
+                RawExcerpt = f.RawExcerpt,
+                FieldType = f.FieldType.ToString(),
+                RequiresReview = f.RequiresReview
+            }).ToList();
+
+            var summary = new ExtractionSummaryDto
+            {
+                TotalFieldsExtracted = fields.Count,
+                HighConfidenceFields = fields.Count(f => f.ConfidenceScore >= 0.7),
+                LowConfidenceFields = fields.Count(f => f.ConfidenceScore < 0.7),
+                AverageConfidenceScore = fields.Count > 0 ? fields.Average(f => f.ConfidenceScore) : 0,
+                ItemsRequiringReview = metadata.ReviewRequiredCount
+            };
+
+            return new ExtractionResultDto
+            {
+                DocumentId = metadata.DocumentId,
+                DocumentFileName = metadata.FileName,
+                ExtractedAt = metadata.UploadedAt,
+                Fields = fields,
+                ReviewQueueItems = new List<ReviewQueueItemDto>(),
+                Summary = summary
+            };
+        }
+
+        // Fallback to in-memory repository for backwards compatibility during extraction
         var document = await _repository.GetByIdAsync(documentId, cancellationToken);
         if (document == null)
         {
             throw new InvalidOperationException($"Document {documentId} not found");
         }
 
-        var fields = document.ExtractedFields.Select(f => new ExtractedFieldDto
+        var docFields = document.ExtractedFields.Select(f => new ExtractedFieldDto
         {
             Id = f.Id,
             FieldName = f.FieldName,
@@ -154,12 +195,12 @@ public class ExtractionService : IExtractionService
             Status = r.Status.ToString()
         }).ToList();
 
-        var summary = new ExtractionSummaryDto
+        var docSummary = new ExtractionSummaryDto
         {
-            TotalFieldsExtracted = fields.Count,
-            HighConfidenceFields = fields.Count(f => f.ConfidenceScore >= 0.7),
-            LowConfidenceFields = fields.Count(f => f.ConfidenceScore < 0.7),
-            AverageConfidenceScore = fields.Count > 0 ? fields.Average(f => f.ConfidenceScore) : 0,
+            TotalFieldsExtracted = docFields.Count,
+            HighConfidenceFields = docFields.Count(f => f.ConfidenceScore >= 0.7),
+            LowConfidenceFields = docFields.Count(f => f.ConfidenceScore < 0.7),
+            AverageConfidenceScore = docFields.Count > 0 ? docFields.Average(f => f.ConfidenceScore) : 0,
             ItemsRequiringReview = reviewItems.Count(r => r.Status == "Pending")
         };
 
@@ -168,9 +209,9 @@ public class ExtractionService : IExtractionService
             DocumentId = document.Id,
             DocumentFileName = document.FileName,
             ExtractedAt = DateTime.UtcNow,
-            Fields = fields,
+            Fields = docFields,
             ReviewQueueItems = reviewItems,
-            Summary = summary
+            Summary = docSummary
         };
     }
 }

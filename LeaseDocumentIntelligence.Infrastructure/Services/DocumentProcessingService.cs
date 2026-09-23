@@ -28,14 +28,48 @@ public class DocumentProcessingService : IDocumentProcessingService
                 using var ms = new MemoryStream(fileContent);
                 using var document = PdfDocument.Open(ms);
 
+                // Extract regular page text
                 int pageIndex = 1;
                 foreach (var page in document.GetPages())
                 {
                     text.AppendLine($"--- Page {pageIndex} ---");
-                    // PdfPig exposes page text via the Text property
                     text.AppendLine(page.Text ?? string.Empty);
                     pageIndex++;
                 }
+
+                // Extract AcroForm field values (fillable PDF forms)
+                // This handles PDFs where values are in form fields, not the text layer
+                if (document.TryGetForm(out var form) && form.Fields.Count > 0)
+                {
+                    text.AppendLine();
+                    text.AppendLine("--- Form Field Values ---");
+                    _logger.LogInformation("Found {Count} AcroForm fields in PDF", form.Fields.Count);
+
+                    int fieldIndex = 0;
+                    foreach (var field in form.Fields)
+                    {
+                        fieldIndex++;
+                        // Most lease forms use text fields - extract those
+                        if (field is UglyToad.PdfPig.AcroForms.Fields.AcroTextField textField)
+                        {
+                            // Information.PartialName contains the field name in PdfPig
+                            var fieldName = textField.Information?.PartialName ?? $"Field_{fieldIndex}";
+                            var fieldValue = textField.Value;
+
+                            if (!string.IsNullOrWhiteSpace(fieldValue))
+                            {
+                                text.AppendLine($"{fieldName}: {fieldValue}");
+                                _logger.LogDebug("Form field '{Name}' = '{Value}'", fieldName, fieldValue);
+                            }
+                        }
+                        else if (field is UglyToad.PdfPig.AcroForms.Fields.AcroCheckboxField checkboxField)
+                        {
+                            var fieldName = checkboxField.Information?.PartialName ?? $"Checkbox_{fieldIndex}";
+                            text.AppendLine($"{fieldName}: {(checkboxField.IsChecked ? "Yes" : "No")}");
+                        }
+                    }
+                }
+
                 return text.ToString();
             }
             catch (Exception ex)

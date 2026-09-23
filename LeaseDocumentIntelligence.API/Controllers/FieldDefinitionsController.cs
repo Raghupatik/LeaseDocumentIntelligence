@@ -4,7 +4,9 @@ using LeaseDocumentIntelligence.Domain.DTOs;
 using LeaseDocumentIntelligence.Domain.Interfaces;
 using LeaseDocumentIntelligence.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Manages field definitions for lease extraction.

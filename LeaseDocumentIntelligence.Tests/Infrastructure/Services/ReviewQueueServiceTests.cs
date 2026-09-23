@@ -11,14 +11,16 @@ using Xunit;
 public class ReviewQueueServiceTests
 {
     private readonly Mock<ILeaseDocumentRepository> _mockRepository;
+    private readonly Mock<IDocumentMetadataRepository> _mockMetadataRepository;
     private readonly Mock<ILogger<ReviewQueueService>> _mockLogger;
     private readonly ReviewQueueService _service;
 
     public ReviewQueueServiceTests()
     {
         _mockRepository = new Mock<ILeaseDocumentRepository>();
+        _mockMetadataRepository = new Mock<IDocumentMetadataRepository>();
         _mockLogger = new Mock<ILogger<ReviewQueueService>>();
-        _service = new ReviewQueueService(_mockRepository.Object, _mockLogger.Object);
+        _service = new ReviewQueueService(_mockRepository.Object, _mockMetadataRepository.Object, _mockLogger.Object);
     }
 
     [Fact]
